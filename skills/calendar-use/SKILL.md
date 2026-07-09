@@ -80,7 +80,7 @@ limit 20;"
 For a requested local date range, use half-open bounds and include events that overlap the range:
 
 ```sql
-where oc.occurrence_end_date >= strftime('%s', :start_local) - 978307200
+where oc.occurrence_end_date > strftime('%s', :start_local) - 978307200
   and oc.occurrence_date < strftime('%s', :end_local) - 978307200
 ```
 
@@ -92,7 +92,7 @@ where lower(coalesce(ci.summary, '')) like lower(:pattern)
    or lower(coalesce(l.title, '')) like lower(:pattern)
 ```
 
-Do not dump all calendars or full event descriptions when a smaller query answers the request. Present all-day events as dates rather than misleading midnight times. Distinguish event counts from occurrence counts when recurrence is involved.
+Do not dump all calendars or full event descriptions when a smaller query answers the request. Present all-day events as calendar dates rather than converting their stored midnight value through `localtime`; that conversion can shift the displayed date. Respect an event's explicit time zone when present, and otherwise use the user's local time zone. Distinguish event counts from occurrence counts when recurrence is involved.
 
 For availability requests, list overlapping busy events and the free intervals inferred between them. State that declined, canceled, tentative, private, travel-time, and all-day entries may need interpretation; do not silently discard them based on undocumented numeric status flags.
 

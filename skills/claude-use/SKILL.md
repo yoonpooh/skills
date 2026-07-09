@@ -12,10 +12,10 @@ Use the local Claude Code CLI as the worker for the current task. Claude should 
 ## Workflow
 
 1. Confirm the request is an explicit Claude invocation.
-2. Preflight the local CLI from Codex with `command -v claude` and, when cheap, `claude --version`.
-3. Run Claude from the relevant working directory with `claude -p`.
+2. Preflight the local CLI from Codex with `command -v claude`, `claude --version`, and `claude auth status`.
+3. Resolve any user decisions that Claude would otherwise need to ask during the run, then run Claude from the relevant working directory with `claude -p`.
 4. Do not add an artificial timeout. Claude may run for a long time; keep the session open and poll until it completes.
-5. Pass the full task, current constraints, expected deliverable, and the preflighted Claude path/version in the prompt.
+5. Pass the full task, current constraints, expected deliverable, and the preflighted Claude path/version/authentication state in the prompt.
 6. After Claude exits, inspect what changed and what Claude reported.
 7. Codex owns review and improvement: identify issues, make small follow-up fixes when clearly needed, and summarize the final state.
 
@@ -30,6 +30,7 @@ You are Claude Code CLI working inside this local repository.
 Claude CLI preflight from Codex:
 - Path: <output of command -v claude>
 - Version: <output of claude --version, if available>
+- Authentication: <summary of claude auth status>
 
 Task:
 <user request>
@@ -53,6 +54,8 @@ command -v claude || ls -l "$HOME/.local/bin/claude"
 
 Do this check from Codex before launching Claude. Do not ask Claude to verify whether `claude` itself is installed; nested Claude runs may not have permission to run that shell command even when Codex can launch Claude successfully.
 
+`-p` is non-interactive. Do not rely on Claude asking the user a follow-up question or approving a new permission during the run. If the task needs tool permissions not already granted by local settings, either pass the smallest appropriate `--allowedTools` rules or stop and resolve the missing authority with the user first. Never use `--dangerously-skip-permissions` or `bypassPermissions` merely to make delegation succeed. When machine-readable completion details are useful, add `--output-format json` and inspect the exit status and result payload.
+
 ## Codex Role
 
 - Treat Claude as the worker, not just an advisor.
@@ -62,6 +65,7 @@ Do this check from Codex before launching Claude. Do not ask Claude to verify wh
 - Run only the verification needed for Codex's follow-up changes or for a user-requested review.
 - If Claude leaves a blocker or uncertainty, summarize it plainly and decide whether Codex can resolve it without another Claude run.
 - If Claude reports shell approval denial, permission blocking, or inability to run commands, treat that as a worker blocker. Do not keep relaunching the same prompt; review whether any useful work was completed, then report or adjust once.
+- Do not grant broad tool access when a narrow read, edit, or command pattern is sufficient for the assigned task.
 - Keep the final response concise and in the user's language.
 
 ## Long-Running Runs

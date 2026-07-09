@@ -138,7 +138,7 @@ For unread counts and summaries:
 5. Mention once that local cached state may be stale or incomplete; do not turn that caveat into automatic UI verification.
 6. Only if the user explicitly asks for the app's current visible unread state, use Messages.app's unread filter through Computer Use.
 
-For search, use the Messages.app search field and clear it after inspection. Search results can include conversations, message snippets, links, and attachments; label the result type instead of treating every row as a conversation.
+For ordinary searches, query `chat.db` with a narrow sender, phrase, chat, and date scope. Because one message can be joined to more than one chat row, use `distinct` or deduplicate by `m.ROWID` before reporting counts or results. Only use the Messages.app search field when the user explicitly asks for the app's current visible results or when the database cannot expose the requested content and the user approves opening the app. Clear the app search field after inspection. App search results can include conversations, message snippets, links, and attachments; label the result type instead of treating every row as a conversation.
 
 ## Spam Cleanup
 

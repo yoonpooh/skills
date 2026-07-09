@@ -12,7 +12,7 @@ Use this skill for email work on the user's Mac. For every read-only request, qu
 ## Safety
 
 - Treat mail as private data. Read only the accounts, senders, dates, and messages needed for the request.
-- Ask before sending, deleting, archiving, moving, or marking messages read/unread.
+- An explicit request that identifies the exact target authorizes a reversible archive, move, or read-status change. Ask before acting when the target set was inferred, broadened, or changed after the request. Always ask separately before sending, permanent deletion, or emptying Trash.
 - Before a state-changing action, show the exact target: count, account/mailbox when known, sender, date, and subject.
 - Treat "delete" as moving to the account Trash/Deleted mailbox. Ask again before permanent deletion or emptying Trash.
 - Prefer creating a visible draft over sending directly unless the user explicitly asks to send.
@@ -35,17 +35,19 @@ Treat every non-mutating lookup as a cache-only task, regardless of whether it c
 
 ## Local Mail Data
 
-Mail.app stores downloaded messages under `~/Library/Mail`. Use standard shell tools, Spotlight metadata, SQLite only when clearly needed, and `.emlx` parsing to inspect local messages.
+Mail.app stores downloaded messages under `~/Library/Mail`. Use standard shell tools, Spotlight metadata, SQLite only when clearly needed, and `.emlx` parsing to inspect local messages. Mail's versioned cache directory is not stable across macOS releases; discover the current `Envelope Index` instead of hardcoding `V10`.
 
 For "not archived" mail counts, default to Inbox messages unless the user defines another mailbox state. Prefer Mail's `Envelope Index` mailbox `total_count` for counts, and mention when downloaded `.emlx` file counts differ.
 
-Useful starting points:
+Resolve the database with the bundled helper before running SQL:
 
 ```bash
-find ~/Library/Mail -name '*.emlx' -print
-mdfind 'kMDItemKind == "Email Message"'
-sqlite3 ~/Library/Mail/V10/MailData/Envelope\ Index "select sum(total_count) from mailboxes where url like '%/INBOX';"
+MAIL_SKILL_DIR="<directory containing this SKILL.md>"
+DB="$("$MAIL_SKILL_DIR/scripts/find_mail_db.sh")"
+sqlite3 -readonly "$DB" "select sum(total_count) from mailboxes where url like '%/INBOX';"
 ```
+
+If discovery reports no readable database, explain that Mail has not created a local cache or macOS privacy permissions prevent access. Do not guess a versioned path. Avoid broad `find` or Spotlight dumps when a scoped database or mailbox query can answer the request.
 
 For `.emlx` files, the first line is usually a byte count. Strip it before parsing the MIME message with Python's standard library when the body or headers matter. Do not use broad body `rg` hits as deletion candidates; encoded MIME/base64 content creates many false positives. Prefer parsed headers such as `From:`, `Subject:`, `Date:`, and `Message-ID:`.
 
@@ -84,7 +86,7 @@ State-changing AppleScript commands must be gated by explicit user confirmation 
 For account mailbox work, AppleScript's mailbox count is often closer to Mail.app's visible account state than raw `.emlx` file counts. `Envelope Index` is still useful as a final Inbox total check:
 
 ```bash
-sqlite3 ~/Library/Mail/V10/MailData/Envelope\ Index \
+sqlite3 -readonly "$DB" \
   "select sum(total_count), sum(unread_count), sum(deleted_count) from mailboxes where url like '%/INBOX';"
 ```
 
@@ -116,7 +118,7 @@ For large Archive cleanup by sender, do not make Mail.app scan the whole Archive
 Useful candidate count query:
 
 ```bash
-sqlite3 ~/Library/Mail/V10/MailData/Envelope\ Index \
+sqlite3 -readonly "$DB" \
   "select mb.url, count(*) from messages m
    join mailboxes mb on mb.ROWID=m.mailbox
    left join addresses a on a.ROWID=m.sender
@@ -128,7 +130,7 @@ sqlite3 ~/Library/Mail/V10/MailData/Envelope\ Index \
 Useful id-list query for a confirmed account/mailbox:
 
 ```bash
-sqlite3 ~/Library/Mail/V10/MailData/Envelope\ Index \
+sqlite3 -readonly "$DB" \
   "select m.ROWID from messages m
    join mailboxes mb on mb.ROWID=m.mailbox
    left join addresses a on a.ROWID=m.sender
@@ -159,7 +161,7 @@ end timeout
 After a large move, verify by mailbox URL, not by file presence. `.emlx` files can remain as downloaded cache or duplicates:
 
 ```bash
-sqlite3 ~/Library/Mail/V10/MailData/Envelope\ Index \
+sqlite3 -readonly "$DB" \
   "select mb.url, count(*) from messages m
    join mailboxes mb on mb.ROWID=m.mailbox
    left join addresses a on a.ROWID=m.sender
@@ -178,7 +180,7 @@ with timeout of 600 seconds
   tell application "Mail"
     set a to account "Google"
     set inboxBox to mailbox "INBOX" of a
-    set archiveBox to item 3 of mailboxes of a -- Gmail 전체보관함 in this local Mail.app
+    set archiveBox to mailbox "<resolved archive mailbox name>" of a
     repeat with i from (count of messages of inboxBox) to 1 by -1
       set m to item i of messages of inboxBox
       if read status of m is true then move m to archiveBox
