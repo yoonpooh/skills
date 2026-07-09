@@ -1,4 +1,4 @@
 interface:
   display_name: "Mail Use"
   short_description: "Search, summarize, and organize local Mail.app email"
-  default_prompt: "Use $mail-use with native APIs for mail data and Computer Use for every Mail.app UI task."
+  default_prompt: "Use $mail-use to query the local Mail cache for every read-only lookup without opening Mail.app; use app automation only for explicitly requested UI or state changes."

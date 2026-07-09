@@ -1,4 +1,4 @@
 interface:
   display_name: "Message Use"
   short_description: "Search and organize local macOS Messages"
-  default_prompt: "Use $message-use with native APIs for data access and Computer Use for every Messages.app UI task, without sending replies."
+  default_prompt: "Use $message-use to query chat.db for every read-only lookup without opening Messages.app; use the app only for explicitly requested UI or state changes, and never send replies."

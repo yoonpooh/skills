@@ -1,13 +1,13 @@
 ---
 name: mail-use
-description: Use the local Mac Mail.app and its on-disk mail cache to find, read, summarize, draft, send, archive, delete, move, or mark emails. Use when the user asks about Apple Mail, Mail.app, local email messages, inbox/archive/search results, senders, subjects, email cleanup, email summaries, email drafts, or actions on currently selected Mail.app messages.
+description: Use the local Mac Mail.app cache and database to quickly find, read, and summarize email without opening Mail.app, and use Mail.app automation only for explicitly requested UI or state-changing work. Use when the user asks about Apple Mail, Mail.app, unread or local email messages, inbox/archive/search results, senders, subjects, email cleanup, email summaries, email drafts, or actions on currently selected Mail.app messages.
 ---
 
 # Mail Use
 
 ## Overview
 
-Use this skill for email work on the user's Mac through Apple Mail data and Mail.app automation. Prefer read-only inspection first; change Mail.app state only after the user explicitly approves the exact action.
+Use this skill for email work on the user's Mac. For every read-only request, query the on-disk Mail cache and `Envelope Index` without launching, activating, or scripting Mail.app. Use Mail.app automation only when the user explicitly requests an app-visible or state-changing action, or approves it after the cache proves insufficient.
 
 ## Safety
 
@@ -19,15 +19,19 @@ Use this skill for email work on the user's Mac through Apple Mail data and Mail
 - Summarize by default. Quote only short excerpts when needed.
 - If results are ambiguous, list the likely matches and ask which one to use.
 - Say when a result is based on local Mail.app cache, because messages not downloaded to this Mac may be missing.
+- Never launch, activate, or foreground Mail.app for a read-only request unless the user explicitly asks to use the app.
 
 ## Workflow
 
+Treat every non-mutating lookup as a cache-only task, regardless of whether it concerns unread, read, recent, archived, sent, searched, or specific messages.
+
 1. Identify the smallest search scope: sender, recipient, subject, date range, mailbox, selected Mail.app messages, or exact phrase.
-2. Search local Mail.app data first when the task is read-only.
+2. Search only local Mail data (`Envelope Index` and downloaded `.emlx`) when the task is read-only. Do not call AppleScript or Computer Use.
 3. Open only the most relevant message files needed to answer.
 4. Report sender, date, subject, relevant recipients, concise summary, and requested action items.
-5. For cleanup or mutation tasks, prepare a candidate list and wait for explicit confirmation before acting.
-6. After an approved mutation, verify with a focused re-check.
+5. If cached content is missing, report the available metadata and the cache limitation. Ask before opening Mail.app; do not switch to the app automatically.
+6. For cleanup or mutation tasks, prepare a candidate list and wait for explicit confirmation before acting.
+7. After an approved mutation, verify with a focused re-check.
 
 ## Local Mail Data
 
@@ -47,9 +51,11 @@ For `.emlx` files, the first line is usually a byte count. Strip it before parsi
 
 ## Mail.app API And UI Routing
 
-Use local files and `Envelope Index` for read-only cache inspection. Use native Mail AppleScript through `osascript` for supported Mail object-model operations such as mailbox counts, message lookup, current-selection reads, draft creation, and direct message moves.
+Use local files and `Envelope Index` exclusively for every ordinary read-only inspection, including message lookup, body reading, search, summaries, recent mail, unread/read mail, verification codes, and mailbox counts. This path must not launch Mail.app and is the default even if cached state may lag the server.
 
-Use Computer Use from the start whenever the task requires reading or manipulating the Mail.app UI. This includes visible mailbox rows, toolbar buttons, menus, dialogs, search results, changing selection, and editing or checking a visible draft. Computer Use is the UI tool, not a fallback after AppleScript UI scripting fails.
+Do not use AppleScript merely to obtain a fresher count or to read messages. If the user asks for the current visible Mail.app state, a currently selected message, a draft, or a mailbox mutation, use native Mail AppleScript through `osascript` for supported Mail object-model operations.
+
+Use Computer Use only when the user explicitly requests reading or manipulating the Mail.app UI, or approves UI access after a cache limitation is reported. This includes visible mailbox rows, toolbar buttons, menus, dialogs, search results, changing selection, and editing or checking a visible draft.
 
 Do not use `System Events`, JXA accessibility scripting, coordinate clicks, or keyboard-event synthesis for Mail.app UI work. Querying Mail's native AppleScript object model is allowed because it is an app API, not UI automation.
 
