@@ -45,13 +45,17 @@ sqlite3 ~/Library/Mail/V10/MailData/Envelope\ Index "select sum(total_count) fro
 
 For `.emlx` files, the first line is usually a byte count. Strip it before parsing the MIME message with Python's standard library when the body or headers matter. Do not use broad body `rg` hits as deletion candidates; encoded MIME/base64 content creates many false positives. Prefer parsed headers such as `From:`, `Subject:`, `Date:`, and `Message-ID:`.
 
-## Mail.app Automation
+## Mail.app API And UI Routing
 
-Use AppleScript through `osascript` only when the task requires the running Mail.app, current selection, visible drafts, or state changes.
+Use local files and `Envelope Index` for read-only cache inspection. Use native Mail AppleScript through `osascript` for supported Mail object-model operations such as mailbox counts, message lookup, current-selection reads, draft creation, and direct message moves.
+
+Use Computer Use from the start whenever the task requires reading or manipulating the Mail.app UI. This includes visible mailbox rows, toolbar buttons, menus, dialogs, search results, changing selection, and editing or checking a visible draft. Computer Use is the UI tool, not a fallback after AppleScript UI scripting fails.
+
+Do not use `System Events`, JXA accessibility scripting, coordinate clicks, or keyboard-event synthesis for Mail.app UI work. Querying Mail's native AppleScript object model is allowed because it is an app API, not UI automation.
 
 Run Mail.app AppleScript commands one at a time and use a short timeout wrapper when probing app state. If Mail.app does not answer quickly, stop and report the automation delay instead of retrying broad commands.
 
-Do not run multiple Mail.app AppleScript or UI automation commands in parallel. Mail.app can keep a stale message selection or visible smart mailbox list while account mailbox counts have already changed.
+Do not run multiple Mail.app AppleScript or Computer Use commands in parallel. Mail.app can keep a stale message selection or visible smart mailbox list while account mailbox counts have already changed.
 
 Safe examples:
 
@@ -63,7 +67,7 @@ osascript -e 'tell application "Mail" to count messages of inbox'
 osascript -e 'tell application "Mail" to make new outgoing message with properties {visible:true, subject:"Subject", content:"Body"}'
 ```
 
-For selected messages, inspect before acting:
+For selected messages, AppleScript may read the existing selection before acting. Use Computer Use if the selection itself must be changed or visually verified:
 
 ```bash
 osascript -e 'tell application "Mail" to get selection'
@@ -78,7 +82,7 @@ sqlite3 ~/Library/Mail/V10/MailData/Envelope\ Index \
   "select sum(total_count), sum(unread_count), sum(deleted_count) from mailboxes where url like '%/INBOX';"
 ```
 
-`모든 받은 편지함` can display stale conversation rows after a move. Verify with both the account mailbox counts and `Envelope Index`; do not keep archiving stale UI rows if the account Inbox count is already zero. For Gmail, also treat the visible Inbox row list as important: an AppleScript `move` to `전체보관함` can leave the Gmail Inbox label visible even when the message object appears moved.
+`모든 받은 편지함` can display stale conversation rows after a move. Verify with both the account mailbox counts and `Envelope Index`; do not keep archiving stale UI rows if the account Inbox count is already zero. For Gmail, also verify the visible Inbox row list with Computer Use: an AppleScript `move` to `전체보관함` can leave the Gmail Inbox label visible even when the message object appears moved.
 
 To inspect account Inbox counts:
 
@@ -99,7 +103,7 @@ APPLESCRIPT
 
 For approved "archive read Inbox except unread" cleanup across accounts, prefer Mail.app's own Archive action or mailbox move over direct database or file edits. Preserve unread messages by `read status is false`; if an unread message was accidentally opened and marked read during UI inspection, preserve it by the previously recorded sender/subject/date. Never click Archive again when the selected visible row is a preserved message.
 
-Move messages by reverse index or repeated index lookup rather than storing a long list of message references; Mail.app references can become stale after moves. Gmail's archive mailbox may be shown as `전체보관함`; if direct string lookup fails because of Unicode normalization, select the mailbox object from the account mailbox list. If Gmail rows remain visible in `모든 받은 편지함` after an AppleScript move, use the Mail.app toolbar Archive button on the specific Gmail Inbox rows, one row at a time, and stop as soon as only preserved rows remain.
+Move messages by reverse index or repeated index lookup rather than storing a long list of message references; Mail.app references can become stale after moves. Gmail's archive mailbox may be shown as `전체보관함`; if direct string lookup fails because of Unicode normalization, select the mailbox object from the account mailbox list. If Gmail rows remain visible in `모든 받은 편지함` after an AppleScript move, use Computer Use on the Mail.app toolbar Archive button for the specific Gmail Inbox rows, one row at a time, and stop as soon as only preserved rows remain.
 
 For large Archive cleanup by sender, do not make Mail.app scan the whole Archive with a broad `repeat with m in messages of archiveBox` loop. It can hang for minutes. Use `Envelope Index` only to identify candidates and verify counts; never edit the database directly. Then move Mail.app messages by their internal `messages.ROWID`/AppleScript `id` in bounded batches, usually 50-100 ids at a time.
 
@@ -180,7 +184,7 @@ end timeout
 Common archive mailbox mapping observed locally:
 
 - iCloud: `Archive`
-- Google/Gmail: Mail.app toolbar Archive action preferred; archive mailbox displays as `전체보관함`
+- Google/Gmail: Computer Use on the Mail.app toolbar Archive action is preferred for visible rows; the archive mailbox displays as `전체보관함`
 - Exchange: `Archive` with Inbox named `받은 편지함`
 - Naver: `Archive`
 - Kakao: `Archive`
@@ -201,7 +205,7 @@ Cleanup flow:
 ## Verification Rules
 
 - For Inbox cleanup, verify `Envelope Index` Inbox totals and account-specific Mail.app Inbox counts.
-- For Gmail cleanup, also verify the visible `모든 받은 편지함` row list when the user is looking at Mail.app; Gmail labels can remain visible after mailbox moves.
+- For Gmail cleanup, also verify the visible `모든 받은 편지함` row list with Computer Use; Gmail labels can remain visible after mailbox moves.
 - For sender cleanup from Archive, verify mailbox URL counts: target sender should be zero in Archive/INBOX and present only in Deleted/Trash unless permanent deletion was explicitly approved.
 - If Mail.app search still shows moved messages, report their current mailbox before running another mutation.
 
@@ -209,5 +213,5 @@ Cleanup flow:
 
 - Draft replies in the user's requested language and tone.
 - Include only facts supported by the email thread or user instructions.
-- Create a visible Mail.app draft when asked to prepare a reply.
+- Create a Mail draft through the native AppleScript API when asked. Use Computer Use for any visible draft editing or UI verification.
 - Ask for explicit confirmation before sending.
