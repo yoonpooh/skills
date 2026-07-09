@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mail Use"
+  short_description: "로컬 Mac Mail.app 메일 조회, 요약, 정리"
+  default_prompt: "Use $mail-use to safely search, summarize, draft, archive, move, or trash messages in the local Mac Mail app."
