@@ -1,0 +1,4 @@
+interface:
+  display_name: "Calendar Use"
+  short_description: "Search and manage local macOS Calendar events"
+  default_prompt: "Use $calendar-use to query the local Calendar cache for read-only lookups without opening Calendar.app."
