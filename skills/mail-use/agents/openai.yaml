@@ -1,4 +1,4 @@
 interface:
   display_name: "Mail Use"
-  short_description: "로컬 Mac Mail.app 메일 조회, 요약, 정리"
+  short_description: "Search, summarize, and organize local Mail.app email"
   default_prompt: "Use $mail-use with native APIs for mail data and Computer Use for every Mail.app UI task."

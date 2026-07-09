@@ -1,6 +1,6 @@
 interface:
   display_name: "Claude Use"
-  short_description: "로컬 Claude Code CLI에 작업 위임"
+  short_description: "Delegate tasks to the local Claude Code CLI"
   default_prompt: "Use $claude-use to delegate the task to local Claude Code CLI, then review the result and summarize the final state."
 policy:
   allow_implicit_invocation: false
